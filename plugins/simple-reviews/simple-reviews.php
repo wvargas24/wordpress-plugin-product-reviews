@@ -10,42 +10,55 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class Simple_Reviews {
-    public function __construct() {
-        add_action('init', [$this, 'register_product_review_cpt']);        
+class Simple_Reviews
+{
+    public function __construct()
+    {
+        // Registrar el Custom Post Type (CPT)
+        add_action('init', [$this, 'register_product_review_cpt']);
+
+        // Registrar los endpoints REST
+        add_action('rest_api_init', [$this, 'register_rest_routes']);
+
+        // Registrar el shortcode
+        add_shortcode('product_reviews', [$this, 'display_product_reviews']);
     }
 
- 
-    public function register_product_review_cpt() {
+    public function register_product_review_cpt()
+    {
         register_post_type('product_review', [
-            'labels'      => [
-                'name'          => 'Product Reviews',
+            'labels' => [
+                'name' => 'Product Reviews',
                 'singular_name' => 'Product Review'
             ],
-            'public'      => true,
-            'supports'    => ['title', 'editor', 'custom-fields'],
-            'show_in_rest' => true,
+            'public' => true,
+            'supports' => ['title', 'editor', 'custom-fields'],
+            'show_in_rest' => true, // Habilitar soporte para REST API
         ]);
     }
 
-    public function register_rest_routes() {
+    public function register_rest_routes()
+    {
+        // Endpoint para análisis de sentimiento
         register_rest_route('mock-api/v1', '/sentiment/', [
-            'methods'  => 'POST',
+            'methods' => 'POST',
             'callback' => [$this, 'analyze_sentiment'],
             'permission_callback' => '__return_true',
         ]);
 
+        // Endpoint para obtener el historial de reseñas
         register_rest_route('mock-api/v1', '/review-history/', [
-            'methods'  => 'GET',
+            'methods' => 'GET',
             'callback' => [$this, 'get_review_history'],
             'permission_callback' => '__return_true',
         ]);
     }
 
-    public function analyze_sentiment($request) {
+    public function analyze_sentiment($request)
+    {
         $params = $request->get_json_params();
         $text = isset($params['text']) ? sanitize_text_field($params['text']) : '';
-        
+
         if (empty($text)) {
             return new WP_Error('empty_text', 'No text provided for analysis.', ['status' => 400]);
         }
@@ -55,33 +68,35 @@ class Simple_Reviews {
         return rest_ensure_response(['sentiment' => $random_sentiment, 'score' => $sentiment_scores[$random_sentiment]]);
     }
 
-    public function get_review_history() {
+    public function get_review_history()
+    {
         $reviews = get_posts([
-            'post_type'      => 'product_review',
+            'post_type' => 'product_review',
             'posts_per_page' => 5,
-            'orderby'        => 'date',
-            'order'          => 'DESC',
+            'orderby' => 'date',
+            'order' => 'DESC',
         ]);
-        
+
         $response = [];
         foreach ($reviews as $review) {
             $response[] = [
-                'id'       => $review->ID,
-                'title'    => $review->post_title,
-                'sentiment'=> get_post_meta($review->ID, 'sentiment', true) ?? 'neutral',
-                'score'    => get_post_meta($review->ID, 'sentiment_score', true) ?? 0.5,
+                'id' => $review->ID,
+                'title' => $review->post_title,
+                'sentiment' => get_post_meta($review->ID, 'sentiment', true) ?? 'neutral',
+                'score' => get_post_meta($review->ID, 'sentiment_score', true) ?? 0.5,
             ];
         }
 
         return rest_ensure_response($response);
     }
 
-    public function display_product_reviews() {
+    public function display_product_reviews()
+    {
         $reviews = get_posts([
-            'post_type'      => 'product_review',
+            'post_type' => 'product_review',
             'posts_per_page' => 5,
-            'orderby'        => 'date',
-            'order'          => 'DESC',
+            'orderby' => 'date',
+            'order' => 'DESC',
         ]);
 
         $output = '<style>
